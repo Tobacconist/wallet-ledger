@@ -143,7 +143,7 @@ public class MoneyMovementTests(WalletApiFactory factory)
     {
         var elif = await _client.FundedWalletAsync("Elif Yılmaz", 10000);
 
-        var response = await _client.PostAsJsonAsync("/transfers", new { fromAccountId = elif, amountMinor = 100, currency = "TRY" });
+        var response = await _client.PostWithKeyAsync("/transfers", new { fromAccountId = elif, amountMinor = 100, currency = "TRY" });
 
         await response.AssertProblemAsync(HttpStatusCode.BadRequest);
     }

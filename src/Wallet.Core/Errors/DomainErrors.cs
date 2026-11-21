@@ -40,4 +40,13 @@ public static class DomainErrors
 
     public static DomainError CannotReverseReversal(Guid transactionId) =>
         new("cannot-reverse-reversal", $"Transaction {transactionId} is itself a reversal and cannot be reversed.", ErrorKind.BusinessRule);
+
+    public static DomainError IdempotencyKeyRequired() =>
+        new("idempotency-key-required", "The Idempotency-Key header is required for this operation.", ErrorKind.Validation);
+
+    public static DomainError InvalidIdempotencyKey(int maxLength) =>
+        new("invalid-idempotency-key", $"The Idempotency-Key header must be at most {maxLength} characters.", ErrorKind.Validation);
+
+    public static DomainError IdempotencyKeyReused(string key) =>
+        new("idempotency-key-reused", $"Idempotency key '{key}' was already used with a different request body.", ErrorKind.BusinessRule);
 }

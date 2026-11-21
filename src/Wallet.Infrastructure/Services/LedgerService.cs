@@ -1,61 +1,69 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Wallet.Core.Accounts;
 using Wallet.Core.Errors;
 using Wallet.Core.Ledger;
 using Wallet.Core.Monetary;
+using Wallet.Infrastructure.Idempotency;
 using Wallet.Infrastructure.Persistence;
+using Wallet.Infrastructure.Persistence.Configurations;
 
 namespace Wallet.Infrastructure.Services;
 
+public sealed record LedgerOutcome(Result<LedgerTransaction> Result, bool Replayed);
+
 public sealed class LedgerService(WalletDbContext db, AccountLocker locker, TimeProvider time)
 {
-    public async Task<Result<LedgerTransaction>> DepositAsync(
-        Guid accountId, long amountMinor, string currencyCode, string? description, CancellationToken ct)
+    public async Task<LedgerOutcome> DepositAsync(
+        IdempotencyKey key, Guid accountId, long amountMinor, string currencyCode, string? description, CancellationToken ct)
     {
         var money = ParseMoney(amountMinor, currencyCode);
         if (!money.IsSuccess)
         {
-            return money.Error;
+            return new(money.Error, Replayed: false);
         }
 
         var settlementId = SystemAccounts.SettlementId(money.Value.Currency);
         return await PostAsync(
+            key,
             [accountId, settlementId],
             (accounts, now) => LedgerPostings.Deposit(accounts[settlementId], accounts[accountId], money.Value, description, now),
             ct);
     }
 
-    public async Task<Result<LedgerTransaction>> WithdrawAsync(
-        Guid accountId, long amountMinor, string currencyCode, string? description, CancellationToken ct)
+    public async Task<LedgerOutcome> WithdrawAsync(
+        IdempotencyKey key, Guid accountId, long amountMinor, string currencyCode, string? description, CancellationToken ct)
     {
         var money = ParseMoney(amountMinor, currencyCode);
         if (!money.IsSuccess)
         {
-            return money.Error;
+            return new(money.Error, Replayed: false);
         }
 
         var settlementId = SystemAccounts.SettlementId(money.Value.Currency);
         return await PostAsync(
+            key,
             [accountId, settlementId],
             (accounts, now) => LedgerPostings.Withdraw(accounts[accountId], accounts[settlementId], money.Value, description, now),
             ct);
     }
 
-    public async Task<Result<LedgerTransaction>> TransferAsync(
-        Guid fromAccountId, Guid toAccountId, long amountMinor, string currencyCode, string? description, CancellationToken ct)
+    public async Task<LedgerOutcome> TransferAsync(
+        IdempotencyKey key, Guid fromAccountId, Guid toAccountId, long amountMinor, string currencyCode, string? description, CancellationToken ct)
     {
         var money = ParseMoney(amountMinor, currencyCode);
         if (!money.IsSuccess)
         {
-            return money.Error;
+            return new(money.Error, Replayed: false);
         }
 
         if (fromAccountId == toAccountId)
         {
-            return DomainErrors.SameAccountTransfer();
+            return new(DomainErrors.SameAccountTransfer(), Replayed: false);
         }
 
         return await PostAsync(
+            key,
             [fromAccountId, toAccountId],
             (accounts, now) => LedgerPostings.Transfer(accounts[fromAccountId], accounts[toAccountId], money.Value, description, now),
             ct);
@@ -77,33 +85,94 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
         return currency.IsSuccess ? Money.Create(amountMinor, currency.Value) : currency.Error;
     }
 
-    // Lock, validate, write and commit happen in one database transaction. Returning early on a business
-    // error disposes the transaction without commit, which rolls back and releases the row locks.
-    private async Task<Result<LedgerTransaction>> PostAsync(
+    // Lock order is always: idempotency key first, then account rows by id. Everything below runs in one database
+    // transaction, so the stored outcome and the ledger writes become visible together or not at all.
+    private async Task<LedgerOutcome> PostAsync(
+        IdempotencyKey key,
         Guid[] accountIds,
         Func<IReadOnlyDictionary<Guid, Account>, DateTimeOffset, Result<LedgerTransaction>> post,
         CancellationToken ct)
     {
+        if (await RecordExistsAsync(key, ct))
+        {
+            return await ReplayAsync(key, ct);
+        }
+
         await using var dbTransaction = await db.Database.BeginTransactionAsync(ct);
+        var now = time.GetDbUtcNow();
+        var record = IdempotencyRecord.Start(key, now);
+        db.IdempotencyRecords.Add(record);
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: IdempotencyRecordConfiguration.PrimaryKeyName,
+        })
+        {
+            // A concurrent request with the same key committed first; answer from its stored outcome.
+            await dbTransaction.RollbackAsync(ct);
+            db.ChangeTracker.Clear();
+            return await ReplayAsync(key, ct);
+        }
 
         var accounts = await locker.LockAsync(accountIds, ct);
-        foreach (var id in accountIds)
+        var result = FindMissing(accountIds, accounts) is { } missingId
+            ? DomainErrors.AccountNotFound(missingId)
+            : post(accounts, now);
+
+        if (result.IsSuccess)
         {
-            if (!accounts.ContainsKey(id))
+            db.Transactions.Add(result.Value);
+            record.Succeed(result.Value.Id);
+        }
+        else
+        {
+            record.Fail(result.Error);
+        }
+
+        await db.SaveChangesAsync(ct);
+        await dbTransaction.CommitAsync(ct);
+        return new(result, Replayed: false);
+    }
+
+    private Task<bool> RecordExistsAsync(IdempotencyKey key, CancellationToken ct) =>
+        db.IdempotencyRecords.AnyAsync(r => r.Key == key.Key && r.Operation == key.Operation, ct);
+
+    private async Task<LedgerOutcome> ReplayAsync(IdempotencyKey key, CancellationToken ct)
+    {
+        var record = await db.IdempotencyRecords
+            .AsNoTracking()
+            .SingleAsync(r => r.Key == key.Key && r.Operation == key.Operation, ct);
+
+        if (record.RequestHash != key.RequestHash)
+        {
+            return new(DomainErrors.IdempotencyKeyReused(key.Key), Replayed: false);
+        }
+
+        if (record.TransactionId is { } transactionId)
+        {
+            return new(await GetTransactionAsync(transactionId, ct), Replayed: true);
+        }
+
+        var error = record.StoredError()
+            ?? throw new InvalidOperationException($"Idempotency record '{key.Key}' has neither a transaction nor an error.");
+        return new(error, Replayed: true);
+    }
+
+    private static Guid? FindMissing(Guid[] ids, Dictionary<Guid, Account> found)
+    {
+        foreach (var id in ids)
+        {
+            if (!found.ContainsKey(id))
             {
-                return DomainErrors.AccountNotFound(id);
+                return id;
             }
         }
 
-        var result = post(accounts, time.GetUtcNow());
-        if (!result.IsSuccess)
-        {
-            return result.Error;
-        }
-
-        db.Transactions.Add(result.Value);
-        await db.SaveChangesAsync(ct);
-        await dbTransaction.CommitAsync(ct);
-        return result.Value;
+        return null;
     }
 }

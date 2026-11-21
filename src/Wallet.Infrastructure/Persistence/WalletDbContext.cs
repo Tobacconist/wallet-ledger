@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Wallet.Core.Accounts;
 using Wallet.Core.Ledger;
 using Wallet.Core.Monetary;
+using Wallet.Infrastructure.Idempotency;
 
 namespace Wallet.Infrastructure.Persistence;
 
@@ -12,6 +13,8 @@ public sealed class WalletDbContext(DbContextOptions<WalletDbContext> options) :
     public DbSet<LedgerTransaction> Transactions => Set<LedgerTransaction>();
 
     public DbSet<LedgerEntry> Entries => Set<LedgerEntry>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

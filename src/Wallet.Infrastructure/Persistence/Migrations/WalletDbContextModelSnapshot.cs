@@ -206,6 +206,54 @@ namespace Wallet.Infrastructure.Persistence.Migrations
                     b.ToTable("ledger_transactions", (string)null);
                 });
 
+            modelBuilder.Entity("Wallet.Infrastructure.Idempotency.IdempotencyRecord", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Operation")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("operation");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("error_code");
+
+                    b.Property<short?>("ErrorKind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("error_kind");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("char(64)")
+                        .HasColumnName("request_hash");
+
+                    b.Property<Guid?>("TransactionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transaction_id");
+
+                    b.HasKey("Key", "Operation")
+                        .HasName("pk_idempotency_records");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_records_created_at");
+
+                    b.ToTable("idempotency_records", (string)null);
+                });
+
             modelBuilder.Entity("Wallet.Core.Ledger.LedgerEntry", b =>
                 {
                     b.HasOne("Wallet.Core.Accounts.Account", null)

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Wallet.Api.Contracts;
 using Wallet.Api.Errors;
+using Wallet.Api.Idempotency;
 using Wallet.Core.Errors;
 using Wallet.Infrastructure.Services;
 
@@ -21,10 +23,8 @@ internal static class AccountEndpoints
         group.MapPost("/{id:guid}/close", (Guid id, AccountService accounts, CancellationToken ct) =>
             StatusChangeAsync(accounts.CloseAsync(id, ct)));
 
-        group.MapPost("/{id:guid}/deposits", async (Guid id, MoneyMovementRequest request, LedgerService ledger, CancellationToken ct) =>
-            TransferEndpoints.ToCreated(await ledger.DepositAsync(id, request.AmountMinor, request.Currency, request.Description, ct)));
-        group.MapPost("/{id:guid}/withdrawals", async (Guid id, MoneyMovementRequest request, LedgerService ledger, CancellationToken ct) =>
-            TransferEndpoints.ToCreated(await ledger.WithdrawAsync(id, request.AmountMinor, request.Currency, request.Description, ct)));
+        group.MapPost("/{id:guid}/deposits", DepositAsync);
+        group.MapPost("/{id:guid}/withdrawals", WithdrawAsync);
 
         return app;
     }
@@ -46,6 +46,42 @@ internal static class AccountEndpoints
     {
         var result = await accounts.GetAsync(id, ct);
         return result.IsSuccess ? TypedResults.Ok(AccountResponse.From(result.Value)) : result.Error.ToProblem();
+    }
+
+    private static async Task<Results<CreatedAtRoute<TransactionResponse>, ProblemHttpResult>> DepositAsync(
+        Guid id,
+        MoneyMovementRequest request,
+        [FromHeader(Name = IdempotencyRequest.HeaderName)] string? idempotencyKey,
+        LedgerService ledger,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var key = IdempotencyRequest.Create(idempotencyKey, $"deposit:{id}", request);
+        if (!key.IsSuccess)
+        {
+            return key.Error.ToProblem();
+        }
+
+        var outcome = await ledger.DepositAsync(key.Value, id, request.AmountMinor, request.Currency, request.Description, ct);
+        return TransferEndpoints.ToResponse(outcome, http);
+    }
+
+    private static async Task<Results<CreatedAtRoute<TransactionResponse>, ProblemHttpResult>> WithdrawAsync(
+        Guid id,
+        MoneyMovementRequest request,
+        [FromHeader(Name = IdempotencyRequest.HeaderName)] string? idempotencyKey,
+        LedgerService ledger,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var key = IdempotencyRequest.Create(idempotencyKey, $"withdrawal:{id}", request);
+        if (!key.IsSuccess)
+        {
+            return key.Error.ToProblem();
+        }
+
+        var outcome = await ledger.WithdrawAsync(key.Value, id, request.AmountMinor, request.Currency, request.Description, ct);
+        return TransferEndpoints.ToResponse(outcome, http);
     }
 
     private static async Task<Results<NoContent, ProblemHttpResult>> StatusChangeAsync(Task<Result> operation)

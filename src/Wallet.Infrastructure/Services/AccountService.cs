@@ -16,7 +16,7 @@ public sealed class AccountService(WalletDbContext db, TimeProvider time)
             return currency.Error;
         }
 
-        var account = Account.OpenWallet(ownerName, currency.Value, time.GetUtcNow());
+        var account = Account.OpenWallet(ownerName, currency.Value, time.GetDbUtcNow());
         if (!account.IsSuccess)
         {
             return account.Error;

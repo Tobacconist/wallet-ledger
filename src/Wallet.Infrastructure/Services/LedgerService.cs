@@ -27,7 +27,7 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
         return await PostAsync(
             key,
             [accountId, settlementId],
-            (accounts, now) => LedgerPostings.Deposit(accounts[settlementId], accounts[accountId], money.Value, description, now),
+            (accounts, now) => Task.FromResult(LedgerPostings.Deposit(accounts[settlementId], accounts[accountId], money.Value, description, now)),
             ct);
     }
 
@@ -44,7 +44,7 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
         return await PostAsync(
             key,
             [accountId, settlementId],
-            (accounts, now) => LedgerPostings.Withdraw(accounts[accountId], accounts[settlementId], money.Value, description, now),
+            (accounts, now) => Task.FromResult(LedgerPostings.Withdraw(accounts[accountId], accounts[settlementId], money.Value, description, now)),
             ct);
     }
 
@@ -65,7 +65,34 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
         return await PostAsync(
             key,
             [fromAccountId, toAccountId],
-            (accounts, now) => LedgerPostings.Transfer(accounts[fromAccountId], accounts[toAccountId], money.Value, description, now),
+            (accounts, now) => Task.FromResult(LedgerPostings.Transfer(accounts[fromAccountId], accounts[toAccountId], money.Value, description, now)),
+            ct);
+    }
+
+    public async Task<LedgerOutcome> ReverseAsync(IdempotencyKey key, Guid transactionId, CancellationToken ct)
+    {
+        // Entries are immutable, so reading the original outside the transaction is safe.
+        var original = await GetTransactionAsync(transactionId, ct);
+        if (!original.IsSuccess)
+        {
+            return new(original.Error, Replayed: false);
+        }
+
+        var accountIds = original.Value.Entries.Select(e => e.AccountId).Distinct().ToArray();
+        return await PostAsync(
+            key,
+            accountIds,
+            async (accounts, now) =>
+            {
+                // Runs after the account rows are locked: a concurrent reversal of the same transaction has either
+                // committed already (and is visible here) or is still waiting for the same locks.
+                if (await db.Transactions.AnyAsync(t => t.ReversesTransactionId == transactionId, ct))
+                {
+                    return DomainErrors.AlreadyReversed(transactionId);
+                }
+
+                return LedgerPostings.Reverse(original.Value, accounts, now);
+            },
             ct);
     }
 
@@ -90,7 +117,7 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
     private async Task<LedgerOutcome> PostAsync(
         IdempotencyKey key,
         Guid[] accountIds,
-        Func<IReadOnlyDictionary<Guid, Account>, DateTimeOffset, Result<LedgerTransaction>> post,
+        Func<IReadOnlyDictionary<Guid, Account>, DateTimeOffset, Task<Result<LedgerTransaction>>> post,
         CancellationToken ct)
     {
         if (await RecordExistsAsync(key, ct))
@@ -122,7 +149,7 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
         var accounts = await locker.LockAsync(accountIds, ct);
         var result = FindMissing(accountIds, accounts) is { } missingId
             ? DomainErrors.AccountNotFound(missingId)
-            : post(accounts, now);
+            : await post(accounts, now);
 
         if (result.IsSuccess)
         {

@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<AccountService>();
         services.AddScoped<AccountLocker>();
         services.AddScoped<LedgerService>();
+        services.AddScoped<StatementService>();
 
         return services;
     }

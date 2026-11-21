@@ -49,4 +49,13 @@ public static class DomainErrors
 
     public static DomainError IdempotencyKeyReused(string key) =>
         new("idempotency-key-reused", $"Idempotency key '{key}' was already used with a different request body.", ErrorKind.BusinessRule);
+
+    public static DomainError AlreadyReversed(Guid transactionId) =>
+        new("already-reversed", $"Transaction {transactionId} has already been reversed.", ErrorKind.Conflict);
+
+    public static DomainError InvalidPageSize(int max) =>
+        new("invalid-page-size", $"Limit must be between 1 and {max}.", ErrorKind.Validation);
+
+    public static DomainError InvalidCursor() =>
+        new("invalid-cursor", "Cursor must be a positive entry id returned by a previous page.", ErrorKind.Validation);
 }

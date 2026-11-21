@@ -16,6 +16,9 @@ internal sealed partial class GlobalExceptionHandler(IProblemDetailsService prob
         {
             BadHttpRequestException bad => (bad.StatusCode, "bad-request", "Bad request"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "concurrency-conflict", "Concurrency conflict"),
+            // Database constraints are the backstop behind the application checks (e.g. one reversal per transaction).
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } }
+                => (StatusCodes.Status409Conflict, "conflict", "Conflict"),
             PostgresException { SqlState: PostgresErrorCodes.DeadlockDetected or PostgresErrorCodes.SerializationFailure }
                 => (StatusCodes.Status503ServiceUnavailable, "transient-database-error", "Transient database error"),
             NpgsqlException { IsTransient: true }

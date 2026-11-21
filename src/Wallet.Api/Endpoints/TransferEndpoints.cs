@@ -19,6 +19,7 @@ internal static class TransferEndpoints
 
         group.MapPost("/", TransferAsync);
         group.MapGet("/{id:guid}", GetAsync).WithName(GetTransactionRoute);
+        group.MapPost("/{id:guid}/reversal", ReverseAsync);
 
         return app;
     }
@@ -54,6 +55,22 @@ internal static class TransferEndpoints
         var outcome = await ledger.TransferAsync(
             key.Value, request.FromAccountId!.Value, request.ToAccountId!.Value, request.AmountMinor, request.Currency, request.Description, ct);
         return ToResponse(outcome, http);
+    }
+
+    private static async Task<Results<CreatedAtRoute<TransactionResponse>, ProblemHttpResult>> ReverseAsync(
+        Guid id,
+        [FromHeader(Name = IdempotencyRequest.HeaderName)] string? idempotencyKey,
+        LedgerService ledger,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var key = IdempotencyRequest.Create(idempotencyKey, $"reversal:{id}", new { transactionId = id });
+        if (!key.IsSuccess)
+        {
+            return key.Error.ToProblem();
+        }
+
+        return ToResponse(await ledger.ReverseAsync(key.Value, id, ct), http);
     }
 
     private static async Task<Results<Ok<TransactionResponse>, ProblemHttpResult>> GetAsync(

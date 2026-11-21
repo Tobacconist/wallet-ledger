@@ -25,6 +25,7 @@ internal static class AccountEndpoints
 
         group.MapPost("/{id:guid}/deposits", DepositAsync);
         group.MapPost("/{id:guid}/withdrawals", WithdrawAsync);
+        group.MapGet("/{id:guid}/entries", GetStatementAsync);
 
         return app;
     }
@@ -82,6 +83,13 @@ internal static class AccountEndpoints
 
         var outcome = await ledger.WithdrawAsync(key.Value, id, request.AmountMinor, request.Currency, request.Description, ct);
         return TransferEndpoints.ToResponse(outcome, http);
+    }
+
+    private static async Task<Results<Ok<StatementResponse>, ProblemHttpResult>> GetStatementAsync(
+        Guid id, long? cursor, int? limit, StatementService statements, CancellationToken ct)
+    {
+        var page = await statements.GetPageAsync(id, cursor, limit, ct);
+        return page.IsSuccess ? TypedResults.Ok(StatementResponse.From(page.Value)) : page.Error.ToProblem();
     }
 
     private static async Task<Results<NoContent, ProblemHttpResult>> StatusChangeAsync(Task<Result> operation)

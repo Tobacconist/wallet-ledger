@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Wallet.Infrastructure.Persistence;
+using Wallet.Infrastructure.Services;
 
 namespace Wallet.Infrastructure;
 
@@ -17,6 +18,7 @@ public static class DependencyInjection
             .UseSnakeCaseNamingConvention());
 
         services.AddSingleton(TimeProvider.System);
+        services.AddScoped<AccountService>();
 
         return services;
     }

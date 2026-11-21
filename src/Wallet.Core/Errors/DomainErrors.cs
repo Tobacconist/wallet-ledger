@@ -11,6 +11,9 @@ public static class DomainErrors
     public static DomainError InvalidOwnerName() =>
         new("invalid-owner-name", "Owner name must be between 1 and 200 characters.", ErrorKind.Validation);
 
+    public static DomainError AccountNotFound(Guid accountId) =>
+        new("account-not-found", $"Account {accountId} was not found.", ErrorKind.NotFound);
+
     public static DomainError SameAccountTransfer() =>
         new("same-account-transfer", "Source and destination accounts must be different.", ErrorKind.BusinessRule);
 

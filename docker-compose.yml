@@ -15,5 +15,18 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build:
+      context: .
+      dockerfile: src/Wallet.Api/Dockerfile
+    environment:
+      ConnectionStrings__Wallet: Host=db;Port=5432;Database=wallet;Username=wallet;Password=${POSTGRES_PASSWORD:-wallet_dev};GSS Encryption Mode=Disable
+      Database__MigrateOnStartup: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   wallet-db:

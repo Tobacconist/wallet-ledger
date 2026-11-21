@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Wallet.Api.Endpoints;
 using Wallet.Api.Errors;
 using Wallet.Infrastructure;
@@ -19,6 +20,13 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 
 var app = builder.Build();
 
+// Convenience for docker compose. With several replicas, run migrations as a separate deploy step instead.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<WalletDbContext>().Database.MigrateAsync();
+}
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -27,6 +35,6 @@ app.MapHealthChecks("/health");
 app.MapAccountEndpoints();
 app.MapTransferEndpoints();
 
-app.Run();
+await app.RunAsync();
 
 public partial class Program;

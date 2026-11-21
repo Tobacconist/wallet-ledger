@@ -1,0 +1,90 @@
+# Sample requests for the VS Code REST Client, Visual Studio or Rider HTTP client.
+# Run them top to bottom; later requests reuse ids from earlier responses.
+
+@baseUrl = http://localhost:8080
+
+### Health
+GET {{baseUrl}}/health
+
+### Open Elif's wallet
+# @name elif
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "ownerName": "Elif Yılmaz", "currency": "TRY" }
+
+### Open Kerem's wallet
+# @name kerem
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "ownerName": "Kerem Aydın", "currency": "TRY" }
+
+### Salary deposit: 5.000,00 TRY
+POST {{baseUrl}}/accounts/{{elif.response.body.$.id}}/deposits
+Content-Type: application/json
+Idempotency-Key: maas-2026-11-elif
+
+{ "amountMinor": 500000, "currency": "TRY", "description": "Kasım maaşı" }
+
+### Rent share transfer: 1.750,00 TRY
+# @name rent
+POST {{baseUrl}}/transfers
+Content-Type: application/json
+Idempotency-Key: kira-2026-11-elif-kerem
+
+{
+  "fromAccountId": "{{elif.response.body.$.id}}",
+  "toAccountId": "{{kerem.response.body.$.id}}",
+  "amountMinor": 175000,
+  "currency": "TRY",
+  "description": "Kira payı - Kasım"
+}
+
+### Same request again: replayed, no second posting (see Idempotent-Replayed header)
+POST {{baseUrl}}/transfers
+Content-Type: application/json
+Idempotency-Key: kira-2026-11-elif-kerem
+
+{
+  "fromAccountId": "{{elif.response.body.$.id}}",
+  "toAccountId": "{{kerem.response.body.$.id}}",
+  "amountMinor": 175000,
+  "currency": "TRY",
+  "description": "Kira payı - Kasım"
+}
+
+### Transfer details
+GET {{baseUrl}}/transfers/{{rent.response.body.$.id}}
+
+### Kerem withdraws 300,00 TRY
+POST {{baseUrl}}/accounts/{{kerem.response.body.$.id}}/withdrawals
+Content-Type: application/json
+Idempotency-Key: atm-2026-11-21-kerem
+
+{ "amountMinor": 30000, "currency": "TRY", "description": "ATM çekimi" }
+
+### Overdraft attempt: 422 insufficient-funds
+POST {{baseUrl}}/transfers
+Content-Type: application/json
+Idempotency-Key: fazla-transfer-2026-11-21
+
+{
+  "fromAccountId": "{{kerem.response.body.$.id}}",
+  "toAccountId": "{{elif.response.body.$.id}}",
+  "amountMinor": 9999900,
+  "currency": "TRY"
+}
+
+### Reverse the rent transfer: 422 here, because Kerem already withdrew part of it
+POST {{baseUrl}}/transfers/{{rent.response.body.$.id}}/reversal
+Idempotency-Key: iade-kira-2026-11
+
+### Elif's statement, newest first
+GET {{baseUrl}}/accounts/{{elif.response.body.$.id}}/entries?limit=10
+
+### Elif's balance
+GET {{baseUrl}}/accounts/{{elif.response.body.$.id}}
+
+### OpenAPI document
+GET {{baseUrl}}/openapi/v1.json

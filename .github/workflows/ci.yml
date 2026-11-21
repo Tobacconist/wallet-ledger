@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: |
+          dotnet restore Wallet.slnx
+          dotnet tool restore
+
+      - name: Build
+        run: dotnet build Wallet.slnx -c Release --no-restore
+
+      # Fails if the EF model was changed without adding a migration.
+      - name: Check migrations are up to date
+        run: dotnet ef migrations has-pending-model-changes -p src/Wallet.Infrastructure -s src/Wallet.Api --no-build --configuration Release
+        env:
+          ConnectionStrings__Wallet: Host=localhost;Database=unused
+
+      # Integration tests start PostgreSQL through Testcontainers using the Docker engine preinstalled on the runner.
+      - name: Test
+        run: dotnet test Wallet.slnx -c Release --no-build --logger "trx;LogFilePrefix=results"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/**/TestResults/*.trx

@@ -14,6 +14,9 @@ public static class DomainErrors
     public static DomainError AccountNotFound(Guid accountId) =>
         new("account-not-found", $"Account {accountId} was not found.", ErrorKind.NotFound);
 
+    public static DomainError TransactionNotFound(Guid transactionId) =>
+        new("transaction-not-found", $"Transaction {transactionId} was not found.", ErrorKind.NotFound);
+
     public static DomainError SameAccountTransfer() =>
         new("same-account-transfer", "Source and destination accounts must be different.", ErrorKind.BusinessRule);
 

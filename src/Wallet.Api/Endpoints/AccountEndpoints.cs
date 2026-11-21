@@ -21,6 +21,11 @@ internal static class AccountEndpoints
         group.MapPost("/{id:guid}/close", (Guid id, AccountService accounts, CancellationToken ct) =>
             StatusChangeAsync(accounts.CloseAsync(id, ct)));
 
+        group.MapPost("/{id:guid}/deposits", async (Guid id, MoneyMovementRequest request, LedgerService ledger, CancellationToken ct) =>
+            TransferEndpoints.ToCreated(await ledger.DepositAsync(id, request.AmountMinor, request.Currency, request.Description, ct)));
+        group.MapPost("/{id:guid}/withdrawals", async (Guid id, MoneyMovementRequest request, LedgerService ledger, CancellationToken ct) =>
+            TransferEndpoints.ToCreated(await ledger.WithdrawAsync(id, request.AmountMinor, request.Currency, request.Description, ct)));
+
         return app;
     }
 

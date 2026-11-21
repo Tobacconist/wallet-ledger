@@ -25,6 +25,7 @@ app.UseStatusCodePages();
 app.MapOpenApi();
 app.MapHealthChecks("/health");
 app.MapAccountEndpoints();
+app.MapTransferEndpoints();
 
 app.Run();
 

@@ -19,6 +19,8 @@ public static class DependencyInjection
 
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<AccountService>();
+        services.AddScoped<AccountLocker>();
+        services.AddScoped<LedgerService>();
 
         return services;
     }

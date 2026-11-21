@@ -10,7 +10,6 @@ internal static class IdempotencyRequest
     public const string HeaderName = "Idempotency-Key";
     public const string ReplayedHeaderName = "Idempotent-Replayed";
 
-    // The typed request record is serialized with fixed property order, so equal payloads always hash equally.
     public static Result<IdempotencyKey> Create<TRequest>(string? headerValue, string operation, TRequest request)
     {
         if (string.IsNullOrWhiteSpace(headerValue))

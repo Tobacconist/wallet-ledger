@@ -71,7 +71,6 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
 
     public async Task<LedgerOutcome> ReverseAsync(IdempotencyKey key, Guid transactionId, CancellationToken ct)
     {
-        // Entries are immutable, so reading the original outside the transaction is safe.
         var original = await GetTransactionAsync(transactionId, ct);
         if (!original.IsSuccess)
         {
@@ -84,8 +83,7 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
             accountIds,
             async (accounts, now) =>
             {
-                // Runs after the account rows are locked: a concurrent reversal of the same transaction has either
-                // committed already (and is visible here) or is still waiting for the same locks.
+                // Checked under the row locks, so a concurrent reversal is either visible here or still waiting.
                 if (await db.Transactions.AnyAsync(t => t.ReversesTransactionId == transactionId, ct))
                 {
                     return DomainErrors.AlreadyReversed(transactionId);
@@ -112,8 +110,7 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
         return currency.IsSuccess ? Money.Create(amountMinor, currency.Value) : currency.Error;
     }
 
-    // Lock order is always: idempotency key first, then account rows by id. Everything below runs in one database
-    // transaction, so the stored outcome and the ledger writes become visible together or not at all.
+    // Lock order: idempotency key first, then accounts by id.
     private async Task<LedgerOutcome> PostAsync(
         IdempotencyKey key,
         Guid[] accountIds,
@@ -140,7 +137,6 @@ public sealed class LedgerService(WalletDbContext db, AccountLocker locker, Time
             ConstraintName: IdempotencyRecordConfiguration.PrimaryKeyName,
         })
         {
-            // A concurrent request with the same key committed first; answer from its stored outcome.
             await dbTransaction.RollbackAsync(ct);
             db.ChangeTracker.Clear();
             return await ReplayAsync(key, ct);

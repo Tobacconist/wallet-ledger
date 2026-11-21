@@ -2,8 +2,7 @@ using Wallet.Core.Errors;
 
 namespace Wallet.Infrastructure.Idempotency;
 
-// Stores the outcome of the first request rather than the raw HTTP body. Replays rebuild the response through
-// the same mapping, so the body is identical while this layer stays unaware of HTTP.
+// Keeps the outcome rather than the HTTP body; replays rebuild the response from it.
 public sealed class IdempotencyRecord
 {
     private IdempotencyRecord()

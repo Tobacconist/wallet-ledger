@@ -7,8 +7,6 @@ using Wallet.Infrastructure.Persistence;
 
 namespace Wallet.IntegrationTests;
 
-// One real PostgreSQL container per test run. The in-memory provider is not an option here:
-// row locks, check constraints and unique violations are exactly what these tests need to exercise.
 public sealed class WalletApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")

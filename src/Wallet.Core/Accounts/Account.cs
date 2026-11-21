@@ -49,7 +49,6 @@ public sealed class Account
         };
     }
 
-    // Settlement accounts mirror money entering or leaving the platform, so they are allowed to go negative.
     public static Account CreateSystem(Guid id, string systemCode, Currency currency, DateTimeOffset now) => new()
     {
         Id = id,

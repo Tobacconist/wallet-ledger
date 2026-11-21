@@ -41,7 +41,6 @@ public class StatementTests(WalletApiFactory factory)
         Assert.Equal("Deposit", lines[0].GetProperty("type").GetString());
         Assert.Equal("Maaş yatırma", lines[0].GetProperty("description").GetString());
 
-        // Each line's running balance is the previous (older) line's balance plus its own amount.
         for (var i = 0; i < lines.Count - 1; i++)
         {
             Assert.Equal(

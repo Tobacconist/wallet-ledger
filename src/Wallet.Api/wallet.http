@@ -1,5 +1,4 @@
-# Sample requests for the VS Code REST Client, Visual Studio or Rider HTTP client.
-# Run them top to bottom; later requests reuse ids from earlier responses.
+# Run top to bottom; later requests reuse ids from earlier responses.
 
 @baseUrl = http://localhost:8080
 

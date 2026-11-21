@@ -6,9 +6,8 @@ namespace Wallet.Infrastructure.Services;
 
 public sealed class AccountLocker(WalletDbContext db)
 {
-    // Must run inside an open transaction. Rows are locked in id order, so two transfers moving money in
-    // opposite directions between the same accounts queue up behind each other instead of deadlocking.
-    // xmin is selected explicitly because SELECT * does not include system columns.
+    // Call inside a transaction. Locking in id order keeps opposite transfers from deadlocking;
+    // xmin is listed because SELECT * skips system columns.
     public async Task<Dictionary<Guid, Account>> LockAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
         var distinct = ids.Distinct().ToArray();

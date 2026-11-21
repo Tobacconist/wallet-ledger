@@ -10,7 +10,6 @@ internal sealed class AccountConfiguration : IEntityTypeConfiguration<Account>
     {
         builder.ToTable("accounts", t =>
         {
-            // Last line of defence: even if application code has a bug, a wallet balance can never go below zero.
             t.HasCheckConstraint("ck_accounts_balance_non_negative", "allow_negative OR balance >= 0");
         });
 
@@ -21,7 +20,7 @@ internal sealed class AccountConfiguration : IEntityTypeConfiguration<Account>
         builder.Property(a => a.SystemCode).HasMaxLength(40);
         builder.Property(a => a.OwnerName).HasMaxLength(Account.OwnerNameMaxLength);
 
-        // Maps to PostgreSQL's xmin system column; used for optimistic concurrency on freeze/close.
+        // Npgsql maps a uint row version to the xmin system column.
         builder.Property<uint>("Version").IsRowVersion();
 
         builder.HasIndex(a => a.SystemCode)

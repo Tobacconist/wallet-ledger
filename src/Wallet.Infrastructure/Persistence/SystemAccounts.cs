@@ -3,7 +3,6 @@ using Wallet.Core.Monetary;
 
 namespace Wallet.Infrastructure.Persistence;
 
-// Settlement accounts are seeded with fixed ids so services can address them without a lookup query.
 public static class SystemAccounts
 {
     private static readonly DateTimeOffset SeededAt = new(2026, 11, 1, 0, 0, 0, TimeSpan.Zero);

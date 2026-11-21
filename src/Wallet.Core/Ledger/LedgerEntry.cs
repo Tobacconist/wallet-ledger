@@ -2,7 +2,7 @@ using Wallet.Core.Monetary;
 
 namespace Wallet.Core.Ledger;
 
-// Positive amount increases the account balance, negative decreases it. Entries are never updated or deleted.
+// Positive amounts increase the balance, negative amounts decrease it.
 public sealed class LedgerEntry
 {
     private LedgerEntry()

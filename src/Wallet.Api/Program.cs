@@ -20,7 +20,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 
 var app = builder.Build();
 
-// Convenience for docker compose. With several replicas, run migrations as a separate deploy step instead.
+// Fine for a single instance; with several replicas run migrations as a separate step.
 if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     using var scope = app.Services.CreateScope();

@@ -23,8 +23,6 @@ public sealed class StatementService(WalletDbContext db)
     public const int DefaultPageSize = 20;
     public const int MaxPageSize = 100;
 
-    // Keyset pagination on (account_id, id DESC): stable under concurrent inserts and served straight from the index,
-    // unlike OFFSET which shifts rows between pages and gets slower the deeper the client pages.
     public async Task<Result<StatementPage>> GetPageAsync(Guid accountId, long? cursor, int? limit, CancellationToken ct)
     {
         var pageSize = limit ?? DefaultPageSize;

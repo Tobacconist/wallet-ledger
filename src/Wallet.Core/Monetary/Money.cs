@@ -2,7 +2,6 @@ using Wallet.Core.Errors;
 
 namespace Wallet.Core.Monetary;
 
-// Amounts are kept in minor units (kuruş, cent) to avoid any rounding during ledger arithmetic.
 public readonly record struct Money
 {
     public const long MaxMinorUnits = 1_000_000_000_000;

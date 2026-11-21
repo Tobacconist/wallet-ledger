@@ -1,8 +1,7 @@
-# Build context is the repository root (see docker-compose.yml).
+# Build context is the repository root.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Restore first so the package layer is cached until a project file or package version changes.
 COPY global.json Directory.Build.props Directory.Packages.props .editorconfig ./
 COPY src/Wallet.Core/Wallet.Core.csproj src/Wallet.Core/
 COPY src/Wallet.Infrastructure/Wallet.Infrastructure.csproj src/Wallet.Infrastructure/

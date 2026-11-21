@@ -22,7 +22,6 @@ internal sealed class LedgerEntryConfiguration : IEntityTypeConfiguration<Ledger
             .HasForeignKey(e => e.AccountId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Statement queries page backwards through an account's entries: WHERE account_id = @id AND id < @cursor ORDER BY id DESC.
         builder.HasIndex(e => new { e.AccountId, e.Id })
             .IsDescending(false, true);
     }

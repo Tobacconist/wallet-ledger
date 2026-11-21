@@ -12,8 +12,7 @@ internal sealed class IdempotencyRecordConfiguration : IEntityTypeConfiguration<
     {
         builder.ToTable("idempotency_records");
 
-        // The primary key doubles as the concurrency guard: a second insert with the same key blocks until the
-        // first transaction finishes, then fails with a unique violation and is answered from the stored outcome.
+        // A concurrent insert with the same key waits here until the first transaction ends.
         builder.HasKey(r => new { r.Key, r.Operation }).HasName(PrimaryKeyName);
 
         builder.Property(r => r.Key).HasMaxLength(IdempotencyKey.MaxKeyLength);

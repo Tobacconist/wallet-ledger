@@ -20,7 +20,6 @@ internal sealed class LedgerTransactionConfiguration : IEntityTypeConfiguration<
             .HasForeignKey(t => t.ReversesTransactionId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // A transaction can be reversed at most once, enforced by the database even under concurrent requests.
         builder.HasIndex(t => t.ReversesTransactionId)
             .IsUnique()
             .HasFilter("reverses_transaction_id IS NOT NULL");

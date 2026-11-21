@@ -4,7 +4,6 @@ using Wallet.Infrastructure.Persistence;
 
 namespace Wallet.IntegrationTests;
 
-// Reconciliation over everything the other tests in this collection have written so far.
 [Collection(ApiTestGroup.Name)]
 public class LedgerInvariantTests(WalletApiFactory factory)
 {

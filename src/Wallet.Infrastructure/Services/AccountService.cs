@@ -37,8 +37,7 @@ public sealed class AccountService(WalletDbContext db, TimeProvider time)
 
     public Task<Result> UnfreezeAsync(Guid id, CancellationToken ct) => ChangeStatusAsync(id, a => a.Unfreeze(), ct);
 
-    // Close relies on the xmin concurrency token: if a deposit lands between the balance check and the save,
-    // SaveChanges throws DbUpdateConcurrencyException instead of closing an account that now holds money.
+    // A deposit landing between the balance check and the save fails the xmin check instead of being lost.
     public Task<Result> CloseAsync(Guid id, CancellationToken ct) => ChangeStatusAsync(id, a => a.Close(), ct);
 
     private async Task<Result> ChangeStatusAsync(Guid id, Func<Account, Result> change, CancellationToken ct)

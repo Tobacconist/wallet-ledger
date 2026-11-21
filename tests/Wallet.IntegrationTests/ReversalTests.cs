@@ -51,7 +51,6 @@ public class ReversalTests(WalletApiFactory factory)
         Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
         foreach (var conflict in responses.Where(r => r.StatusCode != HttpStatusCode.Created))
         {
-            // The app-level check under the row lock must catch every duplicate; the unique index is only a backstop.
             await conflict.AssertProblemAsync(HttpStatusCode.Conflict, "already-reversed");
         }
 

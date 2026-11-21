@@ -8,8 +8,7 @@ public readonly record struct PostingLeg(Account Account, long Amount);
 
 public static class Posting
 {
-    // Structural problems (unbalanced legs, duplicate accounts) are programming errors and throw;
-    // business rule violations are returned so the caller can map them to a 4xx response.
+    // Malformed legs are a bug in the caller and throw; rule violations are returned.
     public static Result<LedgerTransaction> Post(
         TransactionType type,
         Currency currency,

@@ -2,8 +2,7 @@ namespace Wallet.Infrastructure.Persistence;
 
 internal static class DbClock
 {
-    // PostgreSQL timestamptz stores microseconds. Truncating up front keeps the value returned in the first
-    // response identical to what later reads (and idempotent replays) get back from the database.
+    // timestamptz keeps microseconds; truncate so the first response matches later reads.
     public static DateTimeOffset GetDbUtcNow(this TimeProvider time)
     {
         var now = time.GetUtcNow();

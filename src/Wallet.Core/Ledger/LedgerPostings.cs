@@ -75,7 +75,6 @@ public static class LedgerPostings
             now);
     }
 
-    // A reversal never touches the original entries; it posts the exact opposite legs as a new transaction.
     public static Result<LedgerTransaction> Reverse(LedgerTransaction original, IReadOnlyDictionary<Guid, Account> accounts, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(original);

@@ -46,7 +46,6 @@ internal static class WalletApiClient
         return account.GetProperty("balance").GetInt64();
     }
 
-    // Every money movement needs a key; tests that do not care about replay get a fresh one per call.
     public static async Task<HttpResponseMessage> PostWithKeyAsync<T>(this HttpClient client, string url, T body, string? key = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body) };

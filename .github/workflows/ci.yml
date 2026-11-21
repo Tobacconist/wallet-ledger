@@ -31,7 +31,6 @@ jobs:
         env:
           ConnectionStrings__Wallet: Host=localhost;Database=unused
 
-      # Integration tests start PostgreSQL through Testcontainers using the Docker engine preinstalled on the runner.
       - name: Test
         run: dotnet test Wallet.slnx -c Release --no-build --logger "trx;LogFilePrefix=results"
 

@@ -28,5 +28,11 @@ public readonly record struct Currency
         return DomainErrors.UnsupportedCurrency(code);
     }
 
+    public static Currency FromCode(string code)
+    {
+        var result = Parse(code);
+        return result.IsSuccess ? result.Value : throw new InvalidOperationException($"Unknown currency code '{code}'.");
+    }
+
     public override string ToString() => Code;
 }

@@ -1,6 +1,10 @@
+using Wallet.Infrastructure;
+using Wallet.Infrastructure.Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHealthChecks();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHealthChecks().AddDbContextCheck<WalletDbContext>("database");
 
 var app = builder.Build();
 
